@@ -1,0 +1,16 @@
+# Use root/example as user/password credentials
+
+version: '3.1'
+
+services:
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
+    environment:
+      - ADMINER_SERVERS=mysql://root:root@127.0.0.1:3306/table1,mysql://root:root@127.0.0.1:3306/table2,mysql://root:root@mariadb:3306/table3
+      - ADMINER_PLUGINS=oneclick-login-v2
+    volumes:
+        - ./oneclick-login-v2.php:/var/www/html/plugins/oneclick-login-v2.php

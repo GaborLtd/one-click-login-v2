@@ -7,7 +7,7 @@
  * @author Gio Freitas, https://www.github.com/giofreitas
  * @license https://www.apache.org/licenses/LICENSE-2.0 Apache License, Version 2.0
  */
-class OneClickLogin {
+class OneClickLoginV2 {
 	/** @access protected */
 	var $servers, $driver;
 	
@@ -17,17 +17,50 @@ class OneClickLogin {
 	 * @param array $servers
 	 * @param string $driver
 	 */
-	function __construct($servers, $driver = "server") {
-
-		$this->servers = $servers;
-		$this->driver = $driver;
+	function __construct() 
+	{
+		$this->servers = [];
+		$this->driver = 'server';
+		if (array_key_exists('ADMINER_SERVERS', $_ENV)) {		
+			$servers = [];
+			$serverInfo = explode(",", $_ENV['ADMINER_SERVERS']);
+			foreach ($serverInfo as $v) {
+				$s = parse_url($v);
+				$hostWithPort = $s['port'] ? $s['host'] . ":" . $s['port'] : $s['host'];
+				$path = str_replace('/', '', $s['path']);
+			
+				if (array_key_exists($hostWithPort, $servers)) {
+					$servers[$hostWithPort]['databases'][$path] = $path;
+				} else {
+					$servers[$hostWithPort] = [
+						'username' => $s['user'],
+						'pass' => $s['pass'],
+						'label' => $hostWithPort,
+						'driver' => $s['scheme'],
+						'databases' => [
+							$path  => $path
+						]
+					];
+				}
+			}
+			$this->servers = $servers;
+		}
 	}
 
-	function login($login, $password) {
+	function login($login, $password)
+	{
 		// check if server is allowed
 		return isset($this->servers[SERVER]);
 	}
 	
+	function credentials()
+	{
+		$server = $_GET['server'];
+		$username = $this->servers[$server]['username'];
+		$pass = $this->servers[$server]['pass'];
+		return [$server, $username, $pass];
+	}
+
 	function databaseValues($server){
 		$databases = $server['databases'];
 		if(is_array($databases))
@@ -47,7 +80,7 @@ class OneClickLogin {
 		<table>
 			<tr>
 				<th><?php echo lang('Server') ?></th>
-				<th><?php echo lang('User') ?></th>
+				<!-- <th><?php echo lang('User') ?></th> -->
 				<th><?php echo lang('Database') ?></th>
 			</tr>
 			
@@ -63,16 +96,14 @@ class OneClickLogin {
 					?>
 					<tr>
 						<?php if( $i === 0): ?>
-							<td style="vertical-align:middle" rowspan="<?php echo count($databases) ?>"><?php echo isset($server['label']) ? "{$server['label']} ($host)" : $host; ?></td>
-							<td style="vertical-align:middle" rowspan="<?php echo count($databases) ?>"><?php echo $server['username'] ?></td>
+							<td style="vertical-align:middle" rowspan="<?php echo count($databases) ?>"><?php echo isset($server['label']) ? "{$server['label']}" : $host; ?></td>
+							<!-- <td style="vertical-align:middle" rowspan="<?php echo count($databases) ?>"><?php echo $server['username'] ?></td> -->
 						<?php endif; ?>
 						<td style="vertical-align:middle"><?php echo $databases[$database] ?></td>	
 						<td>
 							<form action="" method="post">
 								<input type="hidden" name="auth[driver]" value="<?php echo $this->driver; ?>">
 								<input type="hidden" name="auth[server]" value="<?php echo $host; ?>">
-								<input type="hidden" name="auth[username]" value="<?php echo h($server["username"]); ?>">
-								<input type="hidden" name="auth[password]" value="<?php echo h($server["pass"]); ?>">
 								<input type='hidden' name="auth[db]" value="<?php echo h($database); ?>"/>
 								<input type='hidden' name="auth[permanent]" value="1"/>
 								<input type="submit" value="<?php echo lang('Enter'); ?>">
